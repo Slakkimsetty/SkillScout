@@ -1,0 +1,1 @@
+Draft a short professional email summarizing roles, timeline, and next steps.
