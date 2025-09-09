@@ -1,18 +1,15 @@
+# nodes/presenter.py
 from state import AgentState
 
 def presenter_node(state: AgentState) -> AgentState:
-    md = ["## Hiring Assistant Results"]
-    if state.pending_questions:
-        md.append("### Clarifying Questions")
-        md.extend([f"- {q}" for q in state.pending_questions])
-    if state.artifacts.jds:
-        md.append("\n### Job Descriptions")
-        for title, jd in state.artifacts.jds.items():
-            md.append(f"\n{jd}")
-    if state.artifacts.plan_markdown:
-        md.append("\n### Hiring Plan")
-        md.append(state.artifacts.plan_markdown)
+    # Compose a single markdown for easy download
+    parts = [f"# Hiring Assistant Results",
+             state.artifacts.summary_md,
+             "## Job Descriptions"]
+    for title, md in state.artifacts.jds.items():
+        parts.append(md)
+    parts.append(state.artifacts.plan_markdown)
     if state.artifacts.email_draft:
-        md.append("\n### Draft Email\n```\n" + state.artifacts.email_draft + "\n```")
-    state.artifacts.result_markdown = "\n".join(md)
+        parts.append("## Kickoff Email\n```\n"+state.artifacts.email_draft+"\n```")
+    state.artifacts.summary_md = "\n\n".join(parts)
     return state
