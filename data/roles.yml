@@ -1,1 +1,28 @@
+Founding Engineer:
+  summary: "You will help build the first version of our product and own critical systems."
+  responsibilities:
+    - "Design and deliver core services and APIs"
+    - "Own reliability, scalability and developer experience"
+    - "Collaborate with founders on product and roadmap"
+  must_have:
+    - "5+ years building production systems"
+    - "Strong backend or full-stack skills"
+    - "Startup bias for action"
+  nice_to_have:
+    - "Infra/DevOps experience"
+    - "Experience mentoring/junior hiring"
+
+GenAI Intern:
+  summary: "Assist with prototyping, evaluation and data workflows for GenAI features."
+  responsibilities:
+    - "Build small prototypes with LLMs and vector stores"
+    - "Evaluate prompts and model outputs"
+    - "Document experiments and learnings"
+  must_have:
+    - "Python and basic ML/AI understanding"
+    - "Prompt engineering familiarity"
+    - "Curiosity and fast iteration"
+  nice_to_have:
+    - "Vector DB knowledge (FAISS/Chroma)"
+    - "Streamlit or UX skills"
 
