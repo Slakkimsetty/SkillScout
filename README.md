@@ -96,3 +96,5 @@ SkillScout/
 📊 Analytics dashboard (usage trends, roles tracked)
 
 🔒 Add user authentication for HR teams
+
+Stay Tuned for Updates !
