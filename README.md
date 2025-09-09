@@ -8,18 +8,23 @@ The app asks clarifying questions, generates professional job descriptions, and 
 
 ## ✨ Features  
 
-- **Clarifying Questions**: Automatically asks HR-specific questions (budget, timeline, skills, role type, location).  
-- **Professional Job Descriptions**: Generates recruiter-ready JDs in paragraph format instead of bullet points.  
-- **Hiring Plan & Checklist**: Creates a structured hiring roadmap, from defining roles to onboarding.  
-- **Session Memory**: Saves past sessions locally so you can revisit or continue planning.  
-- **Multi-Step Reasoning**: Uses LangGraph nodes (`intake → clarifier → JD generator → plan builder → presenter`).  
-- **Tool Integration**:  
-  - 📧 Email Writer (draft kickoff emails)  
-  - 📋 Checklist Builder (role-based hiring tasks)  
-  - 🔍 Search Stub (placeholder for future job board integrations)  
-- **Frontend with Streamlit**: Modern, responsive UI with tabs for questions, JDs, and checklists.  
-- **Export Options**: Download results as **Markdown or JSON** for sharing or documentation.  
+- Clarifying Questions – Automatically asks HR-specific questions (budget, timeline, skills, job type, location).
 
+- Job Description Drafts – Generates professional, sentence-based JD drafts tailored to input & clarifications.
+
+- Hiring Plan & Checklist – Creates an actionable hiring roadmap, from role definition to execution.
+
+- Session Memory – Saves past sessions locally so you can resume where you left off.
+
+- Professional Output – Presents results in polished Markdown or downloadable JSON.
+
+Integrated Tools
+
+ - 📧 Email Writer: Draft kickoff or follow-up emails
+
+ - ✅ Checklist Builder: Generate role-specific hiring tasks
+
+ - 🔎 Search Tool (stub): Placeholder for job board/market research integration
 ---
 
 ## 🏗️ Project Structure  
@@ -86,7 +91,23 @@ SkillScout/
 ⚙️ Git + GitHub → Version control & collaboration
 
 ---
+## ⚡ Getting Started
+```
+1. Clone the repo
+   git clone https://github.com/Slakkimsetty/SkillScout.git
+   cd SkillScout
 
+2. Create a virtual environment
+  python -m venv .venv
+  source .venv/Scripts/activate   # (Windows PowerShell)
+  # OR
+  source .venv/bin/activate       # (Mac/Linux)
+
+3. pip install -r requirements.txt #installiing dependencies
+ 
+4. streamlit run app.py  # running the app
+```
+---
 **🔮 Future Improvements**
 
 🔗 Integrate real job board APIs for live market research
@@ -97,4 +118,8 @@ SkillScout/
 
 🔒 Add user authentication for HR teams
 
+
+---
 Stay Tuned for Updates !
+---
+
