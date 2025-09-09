@@ -1,196 +1,166 @@
-import uuid
-import json
+# app.py — interactive clarifying step + results
+import uuid, json
+from typing import List
 import streamlit as st
 from state import AgentState
 from graph import build_graph
 
-# ---------- Page Setup ----------
-st.set_page_config(
-    page_title="HR Agent",
-    page_icon="🤝",
-    layout="wide"
-)
+st.set_page_config(page_title="SkillScout – HR Agent", page_icon="🧭", layout="wide")
 
-# Subtle CSS polish
+# Hide default chrome for a cleaner look
 st.markdown("""
 <style>
-/* Card-like containers */
-.block-container {
-  padding-top: 2rem;
-}
-div[data-testid="stMarkdownContainer"] h2, 
-div[data-testid="stMarkdownContainer"] h3, 
-div[data-testid="stMarkdownContainer"] h4 {
-  margin-top: 0.6rem;
-}
-/* Buttons */
-.stButton>button {
-  border-radius: 12px;
-  padding: 0.6rem 1rem;
-  font-weight: 600;
-}
-/* Inputs */
-textarea, input[type="text"] {
-  border-radius: 10px !important;
-}
-footer {visibility: hidden;}
+header {visibility:hidden;} [data-testid="stToolbar"]{visibility:hidden;} footer{visibility:hidden;}
+.block-container{max-width:1120px; padding-top:.6rem;}
+.card{ background:var(--card,#11182714); border:1px solid rgba(125,125,125,.2);
+       border-radius:14px; padding:14px 16px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- Session State ----------
+# ---------------- Session ----------------
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
-if "history" not in st.session_state:
-    st.session_state.history = []  # list of (prompt, artifacts_dict)
+if "last" not in st.session_state:
+    st.session_state.last = None  # AgentState after each run
 
-# ---------- Sidebar ----------
-with st.sidebar:
-    st.header("⚙️ Controls")
-    st.caption("Session & utilities")
-    st.code(st.session_state.session_id, language="text")
+# ---------------- Helpers ----------------
+def missing_slots(state: AgentState):
+    """Return dict of which fields are missing."""
+    s = state.slots
+    return {
+        "budget": not bool(s.budget),
+        "timeline": not bool(s.timeline),
+        "location": not bool(s.location),
+        "hiring_type": not bool(s.hiring_type),
+        "skills": not bool(s.skills_hint),
+    }
 
-    colA, colB = st.columns(2)
-    with colA:
-        if st.button("🔁 New Session", use_container_width=True):
-            st.session_state.session_id = str(uuid.uuid4())
-            st.session_state.history = []
-            st.experimental_rerun()
-    with colB:
-        if st.button("🧹 Clear History", type="secondary", use_container_width=True):
-            st.session_state.history = []
-            st.experimental_rerun()
-
-    st.markdown("---")
-    st.caption("Tip: You can export Markdown/JSON from the tabs below after running the agent.")
-
-# ---------- Header ----------
-st.title("🤝 HR Agentic App")
-st.write("Plan startup hiring: clarifications → Job Descriptions → Plan → Email.")
-
-# ---------- Prompt ----------
-default_text = "I need to hire a founding engineer and a GenAI intern."
-user_input = st.text_area(
-    "Enter your hiring request:",
-    value=default_text,
-    height=90,
-    placeholder="Describe the roles, budget, timeline, and location if you have them…"
-)
-
-run = st.button("▶️ Run Agent", type="primary")
-
-# ---------- Run the agent ----------
-artifacts_to_show = None
-if run and user_input.strip():
-    state = AgentState(session_id=st.session_state.session_id, user_query=user_input.strip())
+def run_graph_with(state: AgentState) -> AgentState:
     app = build_graph()
     out = app.invoke(state.model_dump())
-    state = AgentState.model_validate(out)
+    return AgentState.model_validate(out)
 
-    # Save only artifacts to history (keeps memory light)
-    st.session_state.history.append({
-        "prompt": user_input.strip(),
-        "artifacts": state.artifacts.model_dump()
-    })
-    artifacts_to_show = state.artifacts.model_dump()
-elif st.session_state.history:
-    # Show the newest run by default
-    artifacts_to_show = st.session_state.history[-1]["artifacts"]
+# ---------------- HERO ----------------
+st.markdown("## What roles do you need?")
+st.caption("Describe your hiring request. I’ll ask what’s missing, then draft JDs and a hiring plan.")
 
-# ---------- Nothing to show yet ----------
-if not artifacts_to_show:
-    st.info("Enter a request and click **Run Agent** to see results.")
-    st.stop()
-
-# ---------- Helpers ----------
-def build_combined_markdown(a: dict) -> str:
-    md = []
-    md.append("## Hiring Assistant Results")
-    if a.get("result_markdown"):
-        md.append(a["result_markdown"])
-    else:
-        # Rebuild a pretty overview if presenter_markdown isn't set
-        if a.get("jds"):
-            md.append("### Job Descriptions")
-            for title, jd in a["jds"].items():
-                md.append(jd)
-        if a.get("plan_markdown"):
-            md.append("### Hiring Plan")
-            md.append(a["plan_markdown"])
-        if a.get("email_draft"):
-            md.append("### Draft Email\n```\n" + a["email_draft"] + "\n```")
-    return "\n\n".join(md)
-
-def build_export_json(a: dict) -> str:
-    # make sure JSON is serializable
-    return json.dumps(a, indent=2, ensure_ascii=False)
-
-a = artifacts_to_show
-combined_md = build_combined_markdown(a)
-export_json = build_export_json(a)
-
-# ---------- Tabs ----------
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["🧭 Overview", "📄 Job Descriptions", "📋 Plan", "✉️ Email", "🧱 Raw JSON"]
+prompt = st.text_input(
+    " ",
+    value="i need to hire an ai engineer. can you help?",
+    label_visibility="collapsed",
+    placeholder="e.g., need a founding engineer and a GenAI intern (remote, 8 weeks, $150–180k)"
 )
 
-with tab1:
-    st.subheader("Overview")
-    st.markdown(combined_md)
+if st.button("Ask Agent", type="primary"):
+    # First pass: run the graph with just the raw prompt
+    first = AgentState(session_id=st.session_state.session_id, user_query=prompt.strip())
+    st.session_state.last = run_graph_with(first)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.download_button(
-            "⬇️ Download Markdown",
-            data=combined_md,
-            file_name="hr_agent_output.md",
-            mime="text/markdown",
-            use_container_width=True
-        )
-    with col2:
-        st.download_button(
-            "⬇️ Download JSON",
-            data=export_json,
-            file_name="hr_agent_output.json",
-            mime="application/json",
-            use_container_width=True
-        )
+st.divider()
 
-with tab2:
-    st.subheader("Job Descriptions")
-    jds = a.get("jds", {})
-    if jds:
-        for title, jd in jds.items():
-            with st.expander(f"JD — {title}", expanded=True):
-                st.markdown(jd)
-    else:
-        st.info("No JDs generated in this run.")
-
-with tab3:
-    st.subheader("Hiring Plan")
-    if a.get("plan_markdown"):
-        st.markdown(a["plan_markdown"])
-    else:
-        st.info("No plan found.")
-    st.markdown("**Plan (JSON)**")
-    st.json(a.get("plan_json", []), expanded=False)
-
-with tab4:
-    st.subheader("Draft Email")
-    if a.get("email_draft"):
-        st.code(a["email_draft"], language="text")
-    else:
-        st.info("No email draft found.")
-
-with tab5:
-    st.subheader("Raw Artifacts JSON")
-    st.json(a, expanded=False)
-
-# ---------- History Panel ----------
-st.markdown("---")
-st.caption("Previous runs")
-if not st.session_state.history:
-    st.write("(none)")
+# ================= FLOW =================
+if not st.session_state.last:
+    st.info("Enter a request above and click **Ask Agent**.")
 else:
-    for i, h in enumerate(reversed(st.session_state.history), start=1):
-        with st.expander(f"Run #{len(st.session_state.history) - i + 1}: {h['prompt'][:60]}…"):
-            st.json(h["artifacts"], expanded=False)
+    state = st.session_state.last
+    miss = missing_slots(state)
+
+    # ------ STEP 1: Clarify (only when something is missing) ------
+    if any(miss.values()):
+        st.subheader("Clarify a few details")
+        st.caption("Answer only what’s missing; you can leave others blank.")
+
+        with st.form("clarify_form", clear_on_submit=False):
+            c1, c2 = st.columns(2)
+
+            # budget
+            budget_val = None
+            if miss["budget"]:
+                with c1:
+                    budget_val = st.text_input("Budget (e.g., $150k, $40/hr, 12 LPA)")
+
+            # timeline
+            timeline_val = None
+            if miss["timeline"]:
+                with c2:
+                    timeline_val = st.text_input("Timeline (e.g., 6 weeks, next 2 months)")
+
+            # location
+            location_val = None
+            if miss["location"]:
+                with c1:
+                    location_val = st.selectbox(
+                        "Location", ["", "Remote", "Hybrid", "Onsite"], index=0
+                    )
+
+            # hiring type
+            type_val = None
+            if miss["hiring_type"]:
+                with c2:
+                    type_val = st.selectbox(
+                        "Hiring type", ["", "Full-time", "Contract", "Intern"], index=0
+                    )
+
+            # skills
+            skills_val = None
+            if miss["skills"]:
+                with c1:
+                    skills_val = st.text_input("Key skills (comma-separated) e.g., python, kubernetes")
+
+            submitted = st.form_submit_button("Continue")
+            if submitted:
+                # Update the existing state slots with provided answers
+                s = state.slots
+                if miss["budget"] and budget_val:
+                    s.budget = budget_val.strip()
+                if miss["timeline"] and timeline_val:
+                    s.timeline = timeline_val.strip()
+                if miss["location"] and location_val:
+                    s.location = location_val.strip() or None
+                if miss["hiring_type"] and type_val:
+                    s.hiring_type = type_val.strip() or None
+                if miss["skills"] and skills_val:
+                    parsed = [x.strip() for x in skills_val.split(",") if x.strip()]
+                    # avoid duplicates
+                    existing = set(s.skills_hint or [])
+                    s.skills_hint = list(existing.union(parsed))
+
+                # Re-run the graph with updated slots (same user_query/session_id)
+                st.session_state.last = run_graph_with(state)
+                st.rerun()
+
+    # ------ STEP 2: Results ------
+    state = st.session_state.last
+    tabs = st.tabs(["Job Descriptions", "Checklist", "Export", "Analytics"])
+
+    with tabs[0]:
+        if not state.artifacts.jds:
+            st.info("Fill the clarifying details and click **Continue** to get JDs.")
+        else:
+            for title, md in state.artifacts.jds.items():
+                with st.container(border=True):
+                    st.markdown(f"**{title} (Draft)**")
+                    st.markdown(md)
+                    st.download_button("Download JD (Markdown)", data=md,
+                                       file_name=f"{title.replace(' ','_').lower()}_jd.md")
+
+    with tabs[1]:
+        if not state.artifacts.plan_json:
+            st.info("No plan yet. Fill clarifications and continue.")
+        else:
+            st.markdown(state.artifacts.plan_markdown)
+            st.json(state.artifacts.plan_json)
+
+    with tabs[2]:
+        payload = state.model_dump()
+        st.download_button("Download session.json", data=json.dumps(payload, indent=2),
+                           file_name="session.json")
+        st.download_button("Download results.md", data=state.artifacts.summary_md,
+                           file_name="results.md")
+
+    with tabs[3]:
+        a = state.analytics or {}
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Roles Created", a.get("roles_created", 0))
+        c2.metric("Checklist Items", a.get("checklist_items", 0))
+        c3.metric("Sessions", a.get("sessions", 1))
