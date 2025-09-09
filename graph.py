@@ -1,3 +1,4 @@
+# graph.py
 from langgraph.graph import StateGraph, END
 from state import AgentState
 from nodes.intake import intake_node
@@ -8,22 +9,18 @@ from nodes.email_writer import email_writer_node
 from nodes.presenter import presenter_node
 
 def build_graph():
-    g = StateGraph(dict)
+    g = StateGraph(AgentState)
 
-    def wrap(func):
-        def _f(d):
-            return func(AgentState.model_validate(d)).model_dump()
-        return _f
-
-    g.add_node("intake", wrap(intake_node))
-    g.add_node("clarifier", wrap(clarifier_node))
-    g.add_node("jd_generator", wrap(jd_generator_node))
-    g.add_node("plan_builder", wrap(plan_builder_node))
-    g.add_node("email_writer", wrap(email_writer_node))
-    g.add_node("presenter", wrap(presenter_node))
+    g.add_node("intake", intake_node)
+    g.add_node("clarifier", clarifier_node)
+    g.add_node("jd_generator", jd_generator_node)
+    g.add_node("plan_builder", plan_builder_node)
+    g.add_node("email_writer", email_writer_node)
+    g.add_node("presenter", presenter_node)
 
     g.set_entry_point("intake")
     g.add_edge("intake", "clarifier")
+    # if clarifier still has missing info we STILL proceed with sensible defaults
     g.add_edge("clarifier", "jd_generator")
     g.add_edge("jd_generator", "plan_builder")
     g.add_edge("plan_builder", "email_writer")
